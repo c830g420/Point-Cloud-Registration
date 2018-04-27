@@ -1,3 +1,7 @@
+'''
+    inspired by https://github.com/ClayFlannigan/icp
+'''
+
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
@@ -9,18 +13,22 @@ class ICP:
     def __init__(self, f1, f2):
 
         # source 
-        self.X = f1.cpts
+
+        self.X = f1.cpts[:, :3]
 
         # destination
-        self.Y = f2.cpts
+
+        self.Y = f2.cpts[:, :3]
 
         assert self.X.shape == self.Y.shape
 
-        # get number of dimensions
+        # get number of dimensions , default 3
+
         self.m = self.X.shape[1]
 
+        # self.m = 3
 
-    # def homogenize(self):
+
 
         # make points homogeneous, copy them to maintain the originals
 
@@ -32,12 +40,52 @@ class ICP:
 
         self.dst[:self.m, :] = np.copy(self.Y.T)
 
-        self.neigh = NearestNeighbors(n_neighbors=1)
+        self.neigh = NearestNeighbors(n_neighbors = 1)
 
-        # return src, dst
+        self.miter = 10
+
+        self.tol = 0.1
+
+        self.thres = 1
 
 
 
+    def setIter(self, iter):
+
+        '''
+
+        set max number of iterations
+
+
+        '''
+
+        self.miter = iter
+
+
+
+    def setTol(self, tolerance):
+
+        '''
+
+        set the tolerance
+
+
+        '''
+
+        self.tol = tolerance
+
+
+
+    def setThres(self, thres):
+
+        '''
+
+        set max number of iterations
+
+
+        '''
+
+        self.thres = thres
 
 
 
@@ -47,19 +95,6 @@ class ICP:
 
         Calculates the least-squares best-fit transform that maps corresponding points A to B in m spatial dimensions
 
-        Input:
-
-          A: Nxm numpy array of corresponding points
-
-          B: Nxm numpy array of corresponding points
-
-        Returns:
-
-          T: (m+1)x(m+1) homogeneous transformation matrix that maps A on to B
-
-          R: mxm rotation matrix
-
-          t: mx1 translation vector
 
         '''
 
@@ -69,13 +104,10 @@ class ICP:
 
 
 
-        # get number of dimensions
-
         m = A.shape[1]
 
 
 
-        # translate points to their centroids
 
         centroid_A = np.mean(A, axis=0)
 
@@ -109,7 +141,7 @@ class ICP:
 
         # translation
 
-        t = centroid_B.T - np.dot(R,centroid_A.T)
+        t = centroid_B.T - np.dot(R, centroid_A.T)
 
 
 
@@ -123,8 +155,7 @@ class ICP:
 
 
 
-        return T #, R, t
-
+        return T , t
 
 
 
@@ -134,12 +165,6 @@ class ICP:
         '''
 
         Find the nearest (Euclidean) neighbor in dst for each point in src
-
-        Output:
-
-            distances: Euclidean distances of the nearest neighbor
-
-            indices: dst indices of the nearest neighbor
 
         '''
 
@@ -161,55 +186,28 @@ class ICP:
 
 
 
-    def iterativeClosestPoint(self, max_iterations=20, tolerance=0.001):
+    def iterativeClosestPoint(self, max_iterations = 50, tolerance = 0, threshold = 0 ) :
 
         '''
 
         The Iterative Closest Point method: finds best-fit transform that maps points A on to points B
 
-        Input:
-
-            A: Nxm numpy array of source mD points
-
-            B: Nxm numpy array of destination mD point
-
-            init_pose: (m+1)x(m+1) homogeneous transformation
-
-            max_iterations: exit algorithm after max_iterations
-
-            tolerance: convergence criteria
-
-        Output:
-
-            T: final homogeneous transformation that maps A on to B
-
-            distances: Euclidean distances (errors) of the nearest neighbor
-
-            i: number of iterations to converge
 
         '''
 
+        max_iterations = self.miter
 
+        tolerance = self.tol
 
-        # assert self.X.shape == self.Y.shape
+        print('Tolerance :')
 
+        print(tolerance)
 
+        threshold = self.thres
 
-        # get number of dimensions
+        print('Threshold :')
 
-        # m = A.shape[1]
-
-
-
-        # make points homogeneous, copy them to maintain the originals
-
-        # src = np.ones((self.m+1, self.X.shape[0]))
-
-        # dst = np.ones((self.m+1, self.Y.shape[0]))
-
-        # src[:m,:] = np.copy(self.X.T)
-
-        # dst[:m,:] = np.copy(self.Y.T)
+        print(threshold)
 
 
 
@@ -217,7 +215,7 @@ class ICP:
 
 
 
-        for i in range(max_iterations):
+        for i in range(max_iterations) :
 
             # find the nearest neighbors between the current source and destination points
 
@@ -228,7 +226,7 @@ class ICP:
             # compute the transformation between the current source and nearest destination points
             
 
-            T = self.best_fit_transform(self.src[:self.m,:].T, self.dst[:self.m,indices].T)
+            T, _ = self.best_fit_transform(self.src[:self.m, :].T, self.dst[:self.m, indices].T)
 
 
 
@@ -240,9 +238,20 @@ class ICP:
 
             # check error
 
+
+
             mean_error = np.mean(distances)
 
-            if np.abs(prev_error - mean_error) < tolerance:
+            print('Current error: ')
+            
+            print(mean_error)
+
+            if mean_error < threshold :
+
+                break
+
+
+            if np.abs(prev_error - mean_error) < tolerance :
 
                 break
 
@@ -250,12 +259,10 @@ class ICP:
 
 
 
-        # calculate final transformation
-
-        T = self.best_fit_transform(self.X, self.src[:self.m,:].T)
+        T, t = self.best_fit_transform(self.X, self.src[:self.m, :].T)
 
 
 
-        return T, distances, i
+        return T[:self.m, :self.m], t, i
 
 
