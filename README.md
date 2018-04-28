@@ -11,8 +11,7 @@
 * Practice ICP algorithm http://www.cs.virginia.edu/~mjh7v/bib/Besl92.pdf 
 ## Instruction:
 1. Extract the file called 'point_cloud_regsitration.rar' into current directory
-2. In terminal, at the directory of this program, type
+2. In terminal, at the directory of this program, type this (as following) to run this program.
 ```
 python main.py
 ```
-to run this program.
